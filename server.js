@@ -1,8 +1,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const bcrypt = require('bcrypt');
+const cors = require('cors');
 const app = express();
-app.use(bodyParser.json());
 
+app.use(bodyParser.json());
+app.use(cors());
+
+const saltRounds = 10;
 const database = {
     users: [
         {
@@ -25,7 +30,7 @@ const database = {
 }
 
 app.get('/', (req, res) => {
-    res.send('this is working');
+    res.send(database.users);
 });
 
 app.post('/signin', (req, res) => {
@@ -41,7 +46,12 @@ app.post('/signin', (req, res) => {
 
 app.post('/register', (req, res) => {
     const { email, name, password } = req.body;
-    
+        
+    bcrypt.hash(password, saltRounds, function(err, hash) {
+        // Store hash in your password DB.
+        console.log(hash);
+    }); 
+
     database.users.push({
         id: '125',
         name: name,
@@ -86,6 +96,11 @@ app.put('/image', (req, res) => {
     }
 });
 
-app.listen(3000, () => {
+// // Load hash from your password DB.
+// bcrypt.compare(myPlaintextPassword, hash, function(err, res) {
+//     // res == true
+// });
+
+app.listen(3001, () => {
     console.log('app is running on port 3000');
 });
