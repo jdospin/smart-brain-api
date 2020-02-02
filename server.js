@@ -39,9 +39,8 @@ app.post('/signin', (req, res) => {
             res.json(database.users[0]);
         } else {
             res.status(400).json('error logging in');
+            return;
         }
-
-    res.json('signing');
 });
 
 app.post('/register', (req, res) => {
@@ -75,6 +74,7 @@ app.get('/profile/:id', (req, res) => {
 
     if (!found) {
         res.status('400').json('no such user');
+        return;
     }
 });
 
@@ -92,6 +92,7 @@ app.put('/image', (req, res) => {
 
     if (!found) {
         res.status('400').json('no such user');
+        return;
     }
 });
 
