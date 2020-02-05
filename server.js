@@ -44,8 +44,7 @@ app.post('/signin', (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-    const { email, name, password } = req.body;
-        
+    const { email, name, password } = req.body;        
     const hash = bcrypt.hashSync(password, saltRounds);
     db.transaction(trx => {
         trx.insert({
@@ -62,13 +61,14 @@ app.post('/register', (req, res) => {
                 name: name,
                 joined: new Date()
             }).then(user => {
-                res.json(user[0])
-            })
+                res.json(user[0]);
+            });
         })
         .then(trx.commit)
         .catch(trx.rollback)
-    });
-    ;
+    })
+    .catch(err => res.status(400).json('unable to register'));
+    
 });
 
 app.get('/profile/:id', (req, res) => {
