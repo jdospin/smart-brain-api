@@ -14,79 +14,73 @@ const db = knex({
     }
 });
 
-console.log(db.select('*').from('users'));
-
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
 const saltRounds = 10;
-const database = {
-    users: [
-        {
-            id: '123',
-            name: 'John',
-            email: 'john@gmail.com',
-            password: 'cookies',
-            entries: 0,
-            joined: new Date()
-        },
-        {
-            id: '124',
-            name: 'Sally',
-            email: 'sally@gmail.com',
-            password: 'bananas',
-            entries: 0,
-            joined: new Date()
-        }
-    ]
-}
-
 app.get('/', (req, res) => {
     res.send(database.users);
 });
 
 app.post('/signin', (req, res) => {
-    if (req.body.email === database.users[0].email &&
-        req.body.password === database.users[0].password) {
-            res.json(database.users[0]);
+    db.select('email', 'hash').from('login')
+    .where('email', '=', req.body.email )
+    .then(data => {
+        const isValid = bcrypt.compareSync(req.body.password, data[0]);
+        if (isValid) {
+            return db.select('*').from('users')
+            .where('email', '=', req.body.email)
+            .then(user => {
+                res.json(user[0])
+            })
+            .catch(err => res.status(400).json('unable to get user'))
         } else {
-            res.status(400).json('error logging in');
-            return;
+            res.status(400).json('wrong credentials')
         }
+    })
+    .catch(err => res.status(400).json('wrong credentials'))
 });
 
 app.post('/register', (req, res) => {
     const { email, name, password } = req.body;
         
-    bcrypt.hash(password, saltRounds, function(err, hash) {
-        // Store hash in your password DB.
-        console.log(hash);
-    }); 
-
-   db('users').insert({
-       email: email,
-       name: name,
-       joined: new Date()
-   }).then(console.log)
-    res.json(database.users);
+    const hash = bcrypt.hashSync(password, saltRounds);
+    db.transaction(trx => {
+        trx.insert({
+            hash: hash,
+            email: email
+        })
+        .into('login')
+        .returning('email')
+        .then(loginEmail => {
+            return trx('users')
+            .returning('*')
+            .insert({ 
+                email: loginEmail[0],
+                name: name,
+                joined: new Date()
+            }).then(user => {
+                res.json(user[0])
+            })
+        })
+        .then(trx.commit)
+        .catch(trx.rollback)
+    });
+    ;
 });
 
 app.get('/profile/:id', (req, res) => {
     const { id } = req.params;
-    let found = false;
-
-    database.users.forEach(user => {
-        if (user.id === id) {
-            found = true;
-            return res.json(user);
+    db.select('*').from('users').where({id})
+    .then(user => {
+        if (user.length > 0) {
+            res.json(user[0]);
+        } else {
+            res.status(400).json('not found')
         }
-    });
-
-    if (!found) {
-        res.status('400').json('no such user');
-        return;
-    }
+    })
+    .catch(err => res.status(400).json('Error getting user'));    
 });
 
 app.put('/image', (req, res) => {
@@ -113,5 +107,5 @@ app.put('/image', (req, res) => {
 // });
 
 app.listen(3001, () => {
-    console.log('app is running on port 3000');
+    console.log('app is running on port 3001');
 });
