@@ -25,9 +25,10 @@ app.get('/', (req, res) => {
 
 app.post('/signin', (req, res) => {
     db.select('email', 'hash').from('login')
-    .where('email', '=', req.body.email )
+    .where('email', '=', req.body.email)
     .then(data => {
-        const isValid = bcrypt.compareSync(req.body.password, data[0]);
+        const hash = data[0].hash;
+        const isValid = bcrypt.compareSync(req.body.password, hash);
         if (isValid) {
             return db.select('*').from('users')
             .where('email', '=', req.body.email)
@@ -85,26 +86,14 @@ app.get('/profile/:id', (req, res) => {
 
 app.put('/image', (req, res) => {
     const { id } = req.body;
-    let found = false;
-
-    database.users.forEach(user => {
-        if (user.id === id) {
-            found = true;
-            user.entries++;
-            return res.json(user.entries);
-        }
-    });
-
-    if (!found) {
-        res.status('400').json('no such user');
-        return;
-    }
+    db('users').where('id', '=', id)
+    .increment('entries', 1)
+    .returning('entries')
+    .then(entries => {
+        res.json(entries[0]);
+    })
+    .catch(err => res.status(400).json('unable to get entries'));
 });
-
-// // Load hash from your password DB.
-// bcrypt.compare(myPlaintextPassword, hash, function(err, res) {
-//     // res == true
-// });
 
 app.listen(3001, () => {
     console.log('app is running on port 3001');
